@@ -3,13 +3,25 @@
  * https://developers.cloudflare.com/workers/wrangler/configuration/
  */
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "backend",
-	"main": "src/index.ts",
-	"compatibility_date": "2025-02-24",
-	"observability": {
-		"enabled": true
-	}
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "backend",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-02-24",
+  "observability": {
+    "enabled": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "GITHUB_AUTO_COMMIT",
+      "id": "7a2928de6fab422291e4734689ad2c08"
+    }
+  ],
+  "vars": {
+    "GITHUB_OAUTH_CALLBACK": "http://localhost:8787/auth/github/callback",
+    "GITHUB_CLIENT_ID": "$GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET": "$GITHUB_CLIENT_SECRET"
+  }
+
   /**
    * Smart Placement
    * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -27,7 +39,7 @@
    * Environment Variables
    * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
    */
-  // "vars": { "MY_VARIABLE": "production_value" },
+
   /**
    * Note: Use secrets to store sensitive data.
    * https://developers.cloudflare.com/workers/configuration/secrets/
