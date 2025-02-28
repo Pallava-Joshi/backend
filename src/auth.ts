@@ -6,6 +6,7 @@ const app = new Hono<{
   Bindings: {
     GITHUB_CLIENT_ID: string;
     GITHUB_CLIENT_SECRET: string;
+    GITHUB_AUTO_COMMIT: KVNamespace; // Correct type for KV namespace
   };
 }>();
 
@@ -65,7 +66,7 @@ app.get("/github/callback", async (c) => {
     headers: {
       Authorization: `Bearer ${tokenData.access_token}`,
       "User-Agent": "Git-Auto-Committer",
-      Accept: "application/vnd.github+json", // Explicit API version
+      Accept: "application/vnd.github+json",
     },
   });
 
@@ -81,14 +82,28 @@ app.get("/github/callback", async (c) => {
     });
   }
 
-  const userData = await userRes.json();
+  const userData: any = await userRes.json();
   console.log("User Data:", userData);
+
+  // Store user data in KV
+  await c.env.GITHUB_AUTO_COMMIT.put(
+    `user:${userData.id}`,
+    JSON.stringify({
+      access_token: tokenData.access_token,
+      username: userData.login,
+      scopes: tokenData.scope.split(","),
+    })
+  );
+
+  //checking for data
+  // const writtenData = await c.env.GITHUB_AUTO_COMMIT.get(`user:${userData.id}`);
+  // console.log("KV Write Result:", writtenData);
 
   // Return token, user info, and scopes to the frontend
   return c.json({
     token: tokenData.access_token,
     user: userData,
-    scopes: tokenData.scope.split(","), // Split scopes into array
+    scopes: tokenData.scope.split(","),
   });
 });
 
