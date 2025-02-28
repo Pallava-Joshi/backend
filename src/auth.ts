@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { githubAuth } from "@hono/oauth-providers/github";
+import { cors } from "hono/cors";
 
 const app = new Hono<{
   Bindings: {
@@ -8,10 +9,13 @@ const app = new Hono<{
   };
 }>();
 
-// Middleware to inject env variables dynamically
+// Enable CORS for all routes
+app.use(cors());
+
+// Middleware to inject env variables dynamically for GitHub OAuth
 app.use("/github", (c, next) => {
   return githubAuth({
-    client_id: c.env.GITHUB_CLIENT_ID, // Fetch from Cloudflare env
+    client_id: c.env.GITHUB_CLIENT_ID,
     client_secret: c.env.GITHUB_CLIENT_SECRET,
     scope: ["public_repo", "read:user", "user:email"],
     oauthApp: true,
@@ -21,10 +25,9 @@ app.use("/github", (c, next) => {
 // Callback to retrieve token & user info
 app.get("/github/callback", async (c) => {
   const query = c.req.query();
-  console.log(query);
+  console.log("Query params:", query);
 
   const code = query.code;
-
   if (!code) {
     return c.json({ error: "Authorization code is missing" }, 400);
   }
@@ -32,7 +35,10 @@ app.get("/github/callback", async (c) => {
   // Exchange code for access token
   const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
     body: JSON.stringify({
       client_id: c.env.GITHUB_CLIENT_ID,
       client_secret: c.env.GITHUB_CLIENT_SECRET,
@@ -41,7 +47,11 @@ app.get("/github/callback", async (c) => {
   });
 
   const tokenData: any = await tokenRes.json();
-  console.log("GitHub Token Response:", tokenData);
+  console.log("GitHub Token Response:", {
+    access_token: tokenData.access_token,
+    scope: tokenData.scope,
+    error: tokenData.error,
+  });
 
   if (tokenData.error || !tokenData.access_token) {
     return c.json(
@@ -52,15 +62,33 @@ app.get("/github/callback", async (c) => {
 
   // Fetch User Info from GitHub API
   const userRes = await fetch("https://api.github.com/user", {
-    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    headers: {
+      Authorization: `Bearer ${tokenData.access_token}`,
+      "User-Agent": "Git-Auto-Committer",
+      Accept: "application/vnd.github+json", // Explicit API version
+    },
   });
-  console.log(userRes);
 
-  //   const userData = await userRes.json();
+  console.log("User API Response Status:", userRes.status, userRes.statusText);
 
+  if (!userRes.ok) {
+    const errorText = await userRes.text();
+    console.log("User API Error:", errorText);
+    return c.json({
+      error: "Failed to fetch user data",
+      status: userRes.status,
+      details: errorText,
+    });
+  }
+
+  const userData = await userRes.json();
+  console.log("User Data:", userData);
+
+  // Return token, user info, and scopes to the frontend
   return c.json({
     token: tokenData.access_token,
-    user: userRes,
+    user: userData,
+    scopes: tokenData.scope.split(","), // Split scopes into array
   });
 });
 
