@@ -26,7 +26,7 @@ app.use("/github", (c, next) => {
 // Callback to retrieve token & user info
 app.get("/github/callback", async (c) => {
   const query = c.req.query();
-  console.log("Query params:", query);
+  // console.log("Query params:", query);
 
   const code = query.code;
   if (!code) {
@@ -48,11 +48,11 @@ app.get("/github/callback", async (c) => {
   });
 
   const tokenData: any = await tokenRes.json();
-  console.log("GitHub Token Response:", {
-    access_token: tokenData.access_token,
-    scope: tokenData.scope,
-    error: tokenData.error,
-  });
+  // console.log("GitHub Token Response:", {
+  //   access_token: tokenData.access_token,
+  //   scope: tokenData.scope,
+  //   error: tokenData.error,
+  // });
 
   if (tokenData.error || !tokenData.access_token) {
     return c.json(
@@ -70,7 +70,7 @@ app.get("/github/callback", async (c) => {
     },
   });
 
-  console.log("User API Response Status:", userRes.status, userRes.statusText);
+  // console.log("User API Response Status:", userRes.status, userRes.statusText);
 
   if (!userRes.ok) {
     const errorText = await userRes.text();
@@ -83,7 +83,7 @@ app.get("/github/callback", async (c) => {
   }
 
   const userData: any = await userRes.json();
-  console.log("User Data:", userData);
+  // console.log("User Data:", userData);
 
   // Store user data in KV
   await c.env.GITHUB_AUTO_COMMIT.put(
